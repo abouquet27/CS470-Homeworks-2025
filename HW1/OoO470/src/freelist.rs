@@ -15,4 +15,12 @@ impl FreeList {
 
         return FreeList { queue };
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    pub fn pop(&mut self) -> usize {
+        return self.queue.pop().unwrap();
+    }
 }

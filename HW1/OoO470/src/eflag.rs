@@ -1,5 +1,7 @@
 use crate::pc::ProgramCounter;
 
+const EXCEPTION_PC_VALUE: usize = 0x10000;
+
 #[derive(Clone)]
 pub struct ExceptionFlag {
     exception_pc: usize,
@@ -14,9 +16,8 @@ impl ExceptionFlag {
         };
     }
 
-    pub fn trigger_exception(&mut self, pc: &mut ProgramCounter) {
-        self.exception_pc = pc.count;
+    pub fn trigger_exception(&mut self, exception_pc: usize) {
         self.exception = true;
-        pc.count = 0x10000;
+        self.exception_pc = exception_pc;
     }
 }

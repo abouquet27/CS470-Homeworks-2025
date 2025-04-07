@@ -38,8 +38,8 @@ fn parse_instructions(path: &Path) -> Vec<Instruction> {
 
     let mut instructions: Vec<Instruction> = vec![];
 
-    for instr in instructions_str {
-        let i = Instruction::from_str(instr);
+    for (id, instr) in instructions_str.iter().enumerate() {
+        let i = Instruction::from_str(instr, id);
         instructions.push(i);
     }
 
