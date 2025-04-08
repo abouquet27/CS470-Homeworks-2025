@@ -154,6 +154,8 @@ impl CPU {
         self.integer_queue.append_instructions(new_issued_instructions);
     }
 
-    
+    pub fn issuance_stage (&mut self){
+        
+    }
 
 }

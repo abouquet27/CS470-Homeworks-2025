@@ -76,10 +76,7 @@ pub struct ActiveListEntry {
 }
 
 impl ActiveListEntry {
-    pub fn from_instruction(
-        instruction: Instruction,
-        old_destination: usize,
-    ) -> ActiveListEntry {
+    pub fn from_instruction(instruction: Instruction, old_destination: usize) -> ActiveListEntry {
         ActiveListEntry {
             done: false,
             exception: false,
@@ -126,5 +123,19 @@ impl IssuedInstruction {
             opcode: instruction.opcode,
             pc: instruction.pc,
         };
+    }
+
+    pub fn is_ready(&self) -> bool {
+        self.op_a_is_ready && self.op_b_is_ready
+    }
+
+    pub fn set_op_a(&mut self, new_op_a_value: i64) {
+        self.op_a_value = new_op_a_value;
+        self.op_a_is_ready = true
+    }
+
+    pub fn set_op_b(&mut self, new_op_b_value: i64) {
+        self.op_b_value = new_op_b_value;
+        self.op_b_is_ready = true
     }
 }
