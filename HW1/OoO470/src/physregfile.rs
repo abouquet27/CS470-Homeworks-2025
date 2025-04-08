@@ -1,13 +1,17 @@
 const PRF_SIZE: usize = 64;
 #[derive(Clone)]
 pub struct PhysicalRegisterFile {
-    values: [i64; PRF_SIZE],
+    registers: [i64; PRF_SIZE],
 }
 
 impl PhysicalRegisterFile {
     pub fn new() -> PhysicalRegisterFile {
         return PhysicalRegisterFile {
-            values: [0; PRF_SIZE],
+            registers: [0; PRF_SIZE],
         };
+    }
+
+    pub fn read_register(&self, index: usize) -> i64 {
+        self.registers[index]
     }
 }

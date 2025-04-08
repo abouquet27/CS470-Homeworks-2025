@@ -67,7 +67,7 @@ impl Instruction {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct RenamedInstruction {
+pub struct ActiveListEntry {
     done: bool,
     exception: bool,
     logical_destination: usize,
@@ -75,12 +75,12 @@ pub struct RenamedInstruction {
     pc: usize,
 }
 
-impl RenamedInstruction {
+impl ActiveListEntry {
     pub fn from_instruction(
         instruction: Instruction,
         old_destination: usize,
-    ) -> RenamedInstruction {
-        RenamedInstruction {
+    ) -> ActiveListEntry {
+        ActiveListEntry {
             done: false,
             exception: false,
             logical_destination: instruction.dest,
@@ -105,20 +105,24 @@ pub struct IssuedInstruction {
 }
 
 impl IssuedInstruction {
-    pub fn from_instruction(instruction: Instruction) -> IssuedInstruction {
-        let op_b = match instruction.op_b {
-            Operand::LogicalRegister { id } => (false, 0, id),
-            Operand::Imm { value } => (true, value, 0),
-        };
-
+    pub fn from_instruction(
+        instruction: Instruction,
+        physical_destination: usize,
+        physical_op_a: usize,
+        physical_op_b: usize,
+        op_a_is_ready: bool,
+        op_b_is_ready: bool,
+        op_a_value: i64,
+        op_b_value: i64,
+    ) -> IssuedInstruction {
         return IssuedInstruction {
-            destination_register: instruction.dest,
-            op_a_is_ready: false,
-            op_a_reg_tag: instruction.op_a,
-            op_a_value: 0,
-            op_b_is_ready: op_b.0,
-            op_b_reg_tag: op_b.2,
-            op_b_value: op_b.1,
+            destination_register: physical_destination,
+            op_a_is_ready: op_a_is_ready,
+            op_a_reg_tag: physical_op_a,
+            op_a_value: op_a_value,
+            op_b_is_ready: op_b_is_ready,
+            op_b_reg_tag: physical_op_b,
+            op_b_value: op_b_value,
             opcode: instruction.opcode,
             pc: instruction.pc,
         };

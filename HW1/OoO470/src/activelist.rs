@@ -1,33 +1,31 @@
-use crate::op::RenamedInstruction;
+use crate::op::ActiveListEntry;
 
 const MAX_SIZE: usize = 32;
 
 #[derive(Clone)]
 pub struct ActiveList {
-    renamed_instructions: Vec<RenamedInstruction>,
+    entries: Vec<ActiveListEntry>,
     count: usize,
 }
 
 impl ActiveList {
     pub fn new() -> ActiveList {
-        let renamed_instructions = vec![];
-        return ActiveList {
-            renamed_instructions,
-            count: 0,
-        };
+        let entries = vec![];
+        return ActiveList { entries, count: 0 };
     }
 
     pub fn is_full(&self) -> bool {
         self.count >= 32
     }
 
-    pub fn push_instruction(&mut self, instruction: RenamedInstruction) -> Result<(), &str> {
-        if !self.is_full() {
-            return Err("Trying to add an instruction but the list is full");
-        }
-
-        self.renamed_instructions.push(instruction);
+    fn push_entry(&mut self, entry: ActiveListEntry) {
+        self.entries.push(entry);
         self.count += 1;
-        Ok(())
+    }
+
+    pub fn append_entries(&mut self, entries: Vec<ActiveListEntry>) {
+        for entry in entries {
+            self.push_entry(entry);
+        }
     }
 }

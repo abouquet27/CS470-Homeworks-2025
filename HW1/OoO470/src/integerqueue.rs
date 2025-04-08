@@ -19,4 +19,15 @@ impl IntegerQueue {
     pub fn is_full(&self) -> bool {
         return self.count >= MAX_SIZE;
     }
+
+    fn push_instruction(&mut self, instruction: IssuedInstruction) {
+        self.queue.push(instruction);
+        self.count += 1;
+    }
+
+    pub fn append_instructions(&mut self, instructions: Vec<IssuedInstruction>) {
+        for instruction in instructions {
+            self.push_instruction(instruction);
+        }
+    }
 }

@@ -1,14 +1,14 @@
-use std::vec;
+use std::{usize, vec};
 
 use crate::{
-    activelist::ActiveList,
+    activelist::{self, ActiveList},
     alu::ALU,
-    bbt::BusyBitTable,
+    bbt::{self, BusyBitTable},
     dir::DecodedInstructionRegister,
     eflag::ExceptionFlag,
     freelist::FreeList,
     integerqueue::IntegerQueue,
-    op::{Instruction, IssuedInstruction, Operand, RenamedInstruction},
+    op::{ActiveListEntry, Instruction, IssuedInstruction, Operand},
     pc::ProgramCounter,
     physregfile::PhysicalRegisterFile,
     rmt::RegisterMapTable,
@@ -26,7 +26,7 @@ pub struct CPU {
     map_table: RegisterMapTable,
     busy_bit_table: BusyBitTable,
     active_list: ActiveList,
-    int_queue: IntegerQueue,
+    integer_queue: IntegerQueue,
     alus: [ALU; PIPELINE_SIZE],
 
     // Data
@@ -48,7 +48,7 @@ impl CPU {
             map_table: RegisterMapTable::new(),
             busy_bit_table: BusyBitTable::new(),
             active_list: ActiveList::new(),
-            int_queue: IntegerQueue::new(),
+            integer_queue: IntegerQueue::new(),
             alus: [ALU::new(), ALU::new(), ALU::new(), ALU::new()],
             // Data
             instructions: instructions,
@@ -68,7 +68,7 @@ impl CPU {
     }
 
     pub fn is_backpressure(&self) -> bool {
-        return self.active_list.is_full() || self.free_list.is_empty() || self.int_queue.is_full();
+        return self.active_list.is_full() || self.free_list.is_empty() || self.integer_queue.is_full();
     }
 
     // Fetch instructions, update PC and give them to DIR
@@ -92,37 +92,68 @@ impl CPU {
     }
 
     pub fn rename_and_dispatch(&mut self, new_instructions: Vec<Instruction>) {
-        let mut renamed_instructions: Vec<RenamedInstruction> = vec![];
+        let mut new_issued_instructions: Vec<IssuedInstruction> = vec![];
+        let mut new_active_list_entries: Vec<ActiveListEntry> = vec![];
 
-        for mut instruction in new_instructions {
-            // todo add commit register
+        for instruction in new_instructions {
+            // Checks operand a and determines if it's ready to be read.
+            let physical_op_a = self.map_table.get_value(instruction.op_a);
+            let op_a_is_ready = self.busy_bit_table.get_busy_bit(physical_op_a);
+            let op_a_value = if op_a_is_ready {
+                self.register_file.read_register(physical_op_a)
+            } else {
+                0
+            };
 
-            // Read operands a and b
-            instruction.op_a = self.map_table.get_value(instruction.op_a);
-
-            let op_b = instruction.op_b;
-            match op_b {
+            // Checks operand b and determines if it's ready to be read.
+            let (physical_op_b, op_b_is_ready, op_b_value) = match instruction.op_b {
                 Operand::LogicalRegister { id } => {
-                    instruction.op_b = Operand::LogicalRegister {
-                        id: self.map_table.get_value(id),
-                    }
+                    let phys_reg = self.map_table.get_value(id);
+                    let is_ready = self.busy_bit_table.get_busy_bit(phys_reg);
+                    let value = if is_ready {
+                        self.register_file.read_register(phys_reg)
+                    } else {
+                        0
+                    };
+                    (phys_reg, is_ready, value)
                 }
-                _ => {}
+                Operand::Imm { value } => (0, true, value),
             };
 
             // Prepare destination register (mapping)
-            let new_physical_reg_dest = self.free_list.pop();
+            let physical_destination = self.free_list.pop();
 
             let old_physical_reg_dest = self
                 .map_table
-                .get_and_set_mapping(instruction.dest, new_physical_reg_dest);
-
-            instruction.dest = old_physical_reg_dest;
+                .get_and_set_mapping(instruction.dest, physical_destination);
 
             // Busy bit set
-            self.busy_bit_table.set_busy_bit(old_physical_reg_dest);
+            self.busy_bit_table.set_busy_bit(physical_destination);
 
-            let mut issued_instruction = IssuedInstruction::from_instruction(instruction);
+            // Issued instruction created
+            let issued_instruction = IssuedInstruction::from_instruction(
+                instruction,
+                physical_destination,
+                physical_op_a,
+                physical_op_b,
+                op_a_is_ready,
+                op_b_is_ready,
+                op_a_value,
+                op_b_value,
+            );
+
+            new_issued_instructions.push(issued_instruction);
+
+            let active_list_entry =
+                ActiveListEntry::from_instruction(instruction, old_physical_reg_dest);
+
+            new_active_list_entries.push(active_list_entry);
         }
+
+        self.active_list.append_entries(new_active_list_entries);
+        self.integer_queue.append_instructions(new_issued_instructions);
     }
+
+    
+
 }

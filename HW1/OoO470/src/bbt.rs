@@ -19,4 +19,8 @@ impl BusyBitTable {
     pub fn set_busy_bit(&mut self, index: usize) {
         self.table[index] = true;
     }
+
+    pub fn get_busy_bit(&self, index: usize) -> bool {
+        self.table[index]
+    }
 }
