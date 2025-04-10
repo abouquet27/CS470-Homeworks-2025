@@ -1,5 +1,3 @@
-use std::{usize, vec};
-
 use crate::{
     activelist::{self, ActiveList},
     alu::ALU,
@@ -15,6 +13,7 @@ use crate::{
 };
 
 const PIPELINE_SIZE: usize = 4;
+const DEBUG: bool = true;
 #[derive(Clone)]
 pub struct CPU {
     // Units
@@ -33,7 +32,6 @@ pub struct CPU {
     instructions: Vec<Instruction>,
     statelogs: Vec<CPU>,
     cycle_count: usize,
-    exception_mode: bool,
 }
 
 impl CPU {
@@ -54,7 +52,6 @@ impl CPU {
             instructions: instructions,
             statelogs: vec![],
             cycle_count: 0,
-            exception_mode: false,
         };
     }
 
@@ -68,13 +65,15 @@ impl CPU {
     }
 
     pub fn is_backpressure(&self) -> bool {
-        return self.active_list.is_full() || self.free_list.is_empty() || self.integer_queue.is_full();
+        return self.active_list.is_full()
+            || self.free_list.is_empty()
+            || self.integer_queue.is_full();
     }
 
     // Fetch instructions, update PC and give them to DIR
     // Returns the instruction previously stored by DIR to be processed in R&D (stage 2)
     pub fn fetch_and_decode(&mut self) -> Vec<Instruction> {
-        if self.is_backpressure() {
+        if self.is_backpressure() || self.eflag.is_exception() {
             return vec![];
         };
         let mut fetched_instruction: Vec<Instruction> = vec![];
@@ -151,11 +150,74 @@ impl CPU {
         }
 
         self.active_list.append_entries(new_active_list_entries);
-        self.integer_queue.append_instructions(new_issued_instructions);
+        self.integer_queue
+            .append_instructions(new_issued_instructions);
     }
 
-    pub fn issuance_stage (&mut self){
+    pub fn issuance_stage(&mut self) {
+        let instructions = self.integer_queue.fetch_ready_instruction();
+
+        // set up the ALUS
+
+        for i in 0..PIPELINE_SIZE {
+            let opt_instr = if i < instructions.len() {
+                Some(instructions[i])
+            } else {
+                None
+            };
+
+            self.alus[i].add_instruction(opt_instr);
+        }
+    }
+
+    pub fn commit_stage(&mut self, forwarded_results: Vec<Result<Option<(usize, i64)>, usize>>) {
+        // First part:
+        // Going through ActiveList's entries and checking them.
+
+        let mut count = 0;
+        let mut no_more_instruction = false;
+        let mut removed_entries: Vec<ActiveListEntry> = vec![];
+        let mut kept_entries: Vec<ActiveListEntry> = self.active_list.get_entries();
+
+        while let Some(e) = kept_entries.first() {
+            if e.done || e.exception || PIPELINE_SIZE <= count {
+                // the older instruction is not taken because:
+                // 1. it's not done (the committed instruction must preserver the program order)
+                // 2. it triggers an exception
+                // 3. 4 instructions have already been removed
+
+                if e.exception {
+                    self.eflag.trigger_exception(e.pc);
+                    self.pc.error_pc();
+                }
+
+                break;
+            }
+
+            let removed_entry = kept_entries.remove(0);
+            removed_entries.push(removed_entry);
+        }
+
+        self.active_list.set_entries(kept_entries);
+
+        // Second part:
+        // Updating ActiveList's entries from the result
+
+        for result in forwarded_results {
+            self.active_list.update_instruction(result);
+        }
+
+        if DEBUG {
+            println!("Removed entries: {:#?}", removed_entries);
+        }
+    }
+
+    pub fn exception_recovery_mode(&mut self) {
+        self.dir.clear();
+        self.integer_queue.clear();
+        for i in 0..PIPELINE_SIZE {
+            self.alus[i].clear();
+        }
         
     }
-
 }

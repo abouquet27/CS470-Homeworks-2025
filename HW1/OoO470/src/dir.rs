@@ -16,10 +16,13 @@ impl DecodedInstructionRegister {
         &mut self,
         new_instructions: Vec<Instruction>,
     ) -> Vec<Instruction> {
-        
         let decoded_pcs = self.decoded_pcs.clone();
         self.decoded_pcs = new_instructions;
 
         return decoded_pcs;
+    }
+
+    pub fn clear(&mut self) {
+        self.decoded_pcs = vec![];
     }
 }

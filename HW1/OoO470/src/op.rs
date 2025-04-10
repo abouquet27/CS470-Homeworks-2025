@@ -68,11 +68,11 @@ impl Instruction {
 
 #[derive(Debug, Copy, Clone)]
 pub struct ActiveListEntry {
-    done: bool,
-    exception: bool,
+    pub done: bool,
+    pub exception: bool,
     logical_destination: usize,
     old_destination: usize,
-    pc: usize,
+    pub pc: usize,
 }
 
 impl ActiveListEntry {

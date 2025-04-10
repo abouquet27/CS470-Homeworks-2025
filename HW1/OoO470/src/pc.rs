@@ -1,3 +1,5 @@
+const EXCEPTION_PC_VALUE: usize = 0x10000;
+
 #[derive(Clone)]
 pub struct ProgramCounter {
     count: usize,
@@ -14,5 +16,9 @@ impl ProgramCounter {
 
     pub fn get_count(&self) -> usize {
         self.count
+    }
+
+    pub fn error_pc(&mut self) {
+        self.count = EXCEPTION_PC_VALUE;
     }
 }

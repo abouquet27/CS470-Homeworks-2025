@@ -33,16 +33,24 @@ impl IntegerQueue {
         }
     }
 
-    pub fn update_instructions(&mut self, results: Vec<(usize, i64)>) {
+    // Update instruction using the results computed by the ALUS
+    // on the forwarding path
+    pub fn update_instructions(&mut self, forwarded_results: Vec<(usize, i64)>) {
         for i in self.queue.iter_mut() {
             if !i.op_a_is_ready {
-                if let Some(r) = results.iter().find(|&&(dest, _)| dest == i.op_a_reg_tag) {
+                if let Some(r) = forwarded_results
+                    .iter()
+                    .find(|&&(dest, _)| dest == i.op_a_reg_tag)
+                {
                     i.op_a_value = r.1;
                 }
             }
 
             if !i.op_b_is_ready {
-                if let Some(r) = results.iter().find(|&&(dest, _)| dest == i.op_b_reg_tag) {
+                if let Some(r) = forwarded_results
+                    .iter()
+                    .find(|&&(dest, _)| dest == i.op_b_reg_tag)
+                {
                     i.op_b_value = r.1;
                 }
             }
@@ -74,5 +82,10 @@ impl IntegerQueue {
             .retain(|&i| ready_instructions.iter().all(|&r| r.pc != i.pc));
 
         ready_instructions
+    }
+
+    pub fn clear(&mut self) {
+        self.queue = vec![];
+        self.count = 0;
     }
 }

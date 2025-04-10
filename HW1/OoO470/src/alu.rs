@@ -2,25 +2,29 @@ use crate::op::{IssuedInstruction, OpCode};
 
 #[derive(Clone)]
 pub struct ALU {
+    new_instruction: Option<IssuedInstruction>,
     current_instruction: Option<IssuedInstruction>,
-    result_previous_instruction: Result<Option<(usize, i64)>, String>,
+    result_previous_instruction: Result<Option<(usize, i64)>, usize>,
 }
 
 impl ALU {
     pub fn new() -> ALU {
         return ALU {
+            new_instruction: None,
             current_instruction: None,
             result_previous_instruction: Ok(None),
         };
     }
 
-    pub fn add_and_process_instruction(
-        &mut self,
-        new_instr: Option<IssuedInstruction>,
-    ) -> Result<Option<(usize, i64)>, String> {
+    pub fn add_instruction(&mut self, new_instr: Option<IssuedInstruction>) {
+        self.current_instruction = self.new_instruction; // erase the instruction just computed
+        self.new_instruction = new_instr;
+    }
+
+    pub fn process_current_instruction(&mut self) -> Result<Option<(usize, i64)>, usize> {
         let processed_instruction = self.current_instruction.clone();
 
-        let result: Result<Option<(usize, i64)>, String> =
+        let result: Result<Option<(usize, i64)>, usize> =
             if let Some(instruction) = processed_instruction {
                 match instruction.opcode {
                     OpCode::ADD => Ok(Some((
@@ -41,7 +45,7 @@ impl ALU {
                     ))),
                     OpCode::DIVU => {
                         if instruction.op_b_value == 0 {
-                            Err("Divisor operand is null".to_string())
+                            Err(instruction.pc)
                         } else {
                             Ok(Some((
                                 instruction.destination_register,
@@ -51,7 +55,7 @@ impl ALU {
                     }
                     OpCode::REMU => {
                         if instruction.op_b_value == 0 {
-                            Err("Divisor operand is null".to_string())
+                            Err(instruction.pc)
                         } else {
                             Ok(Some((
                                 instruction.destination_register,
@@ -64,8 +68,13 @@ impl ALU {
                 Ok(None)
             };
 
-        self.current_instruction = new_instr;
         self.result_previous_instruction = result.clone();
         result
+    }
+
+    pub fn clear(&mut self) {
+        self.current_instruction = None;
+        self.new_instruction = None;
+        self.result_previous_instruction = Ok(None)
     }
 }
